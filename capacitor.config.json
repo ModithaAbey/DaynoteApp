@@ -1,0 +1,8 @@
+{
+  "appId": "com.daynote.app",
+  "appName": "DayNote",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}
