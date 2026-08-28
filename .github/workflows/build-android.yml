@@ -7,6 +7,11 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# Lets this workflow create/update GitHub Releases (needed for the
+# "Publish APK to a permanent Release" step below).
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -49,9 +54,28 @@ jobs:
       # Makes the built APK downloadable from the workflow run's summary
       # page (Actions tab -> this run -> Artifacts section), instead of
       # it only existing on the CI runner's disk (which gets thrown away
-      # once the job finishes).
+      # once the job finishes). This copy requires being logged into
+      # GitHub and expires after 90 days -- kept here as a quick way to
+      # grab a single run's APK, but the Release step below is what the
+      # app's own "Install" button should link to.
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: daynote-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      # Publishes the same APK to a GitHub Release tagged "latest",
+      # replacing whatever was there before. This gives a permanent,
+      # no-login-required download URL that never changes between
+      # builds, which is what makes it safe to hardcode in the app's
+      # "Install" button:
+      #   https://github.com/<owner>/<repo>/releases/download/latest/app-debug.apk
+      - name: Publish APK to a permanent Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest build
+          body: Automatically published from commit ${{ github.sha }}.
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
