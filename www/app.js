@@ -66,29 +66,44 @@ const UI = (() => {
   }
 
   function isStandalone() {
-    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    // True for an installed PWA (browsers set this media feature), and
+    // also true inside the installed native Capacitor app -- which never
+    // sets display-mode: standalone, so without this check the install
+    // banner would keep popping up on every page even after the user
+    // already has the real app installed.
+    const isNativeApp = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+    return isNativeApp || window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   }
 
-  // Chrome/Edge/Android fire `beforeinstallprompt` and let us trigger the
-  // native install dialog ourselves; iOS Safari never fires it and has no
-  // programmatic install API at all, so it gets a short "how to" banner
-  // pointing at the Share sheet instead. Nothing shows once the app is
-  // already running installed (standalone). This is a multi-page site —
-  // each page load re-runs init() — and dismissing the banner doesn't
-  // persist across pages, so it reappears every time the user navigates
-  // to a new page.
-  let deferredInstallPrompt = null;
+  // Android gets a banner whose button downloads the DayNote APK directly
+  // (no PWA install-prompt flow). iOS Safari has no APK equivalent, so it
+  // still gets the short "how to" banner pointing at the Share sheet.
+  // Nothing shows once the app is already running installed (standalone).
+  // This is a multi-page site — each page load re-runs init() — and
+  // dismissing the banner doesn't persist across pages, so it reappears
+  // every time the user navigates to a new page.
+
+  // Path to the built APK — served from the GitHub Release asset.
+  const APK_URL = 'https://github.com/ModithaAbey/DaynoteApp/releases/download/latest/app-debug.apk';
+
   function wireInstallPrompt() {
     if (isStandalone()) return;
 
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredInstallPrompt = e;
-      showInstallBanner('android');
-    });
+    const ua = navigator.userAgent;
+    const isIOS = /iphone|ipad|ipod/i.test(ua) && !window.MSStream;
+    const isAndroid = /android/i.test(ua);
 
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
-    if (isIOS) showInstallBanner('ios');
+    if (isAndroid) showInstallBanner('android');
+    else if (isIOS) showInstallBanner('ios');
+  }
+
+  function downloadApk() {
+    const a = document.createElement('a');
+    a.href = APK_URL;
+    a.download = 'DayNote.apk';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   }
 
   function showInstallBanner(kind) {
@@ -110,13 +125,10 @@ const UI = (() => {
     banner.querySelector('.install-banner-close').onclick = dismiss;
     const installBtn = banner.querySelector('.install-banner-install');
     if (installBtn) {
-      installBtn.onclick = async () => {
-        if (!deferredInstallPrompt) return;
-        deferredInstallPrompt.prompt();
-        const { outcome } = await deferredInstallPrompt.userChoice;
-        deferredInstallPrompt = null;
+      installBtn.onclick = () => {
+        downloadApk();
         banner.remove();
-        if (outcome === 'accepted') showToast('Installing DayNote', 'Check your home screen in a moment.');
+        showToast('Downloading DayNote', 'Open the downloaded APK to install. You may need to allow installs from this source.');
       };
     }
   }
