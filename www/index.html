@@ -92,6 +92,11 @@
   </div>
 </div>
 
+<!-- Capacitor bridge script -- must load before app.js/notifications.js
+     so window.Capacitor exists when they run. Without this, the app
+     silently behaves like a plain website instead of the native app
+     (no native notifications, no Capacitor plugins available). -->
+<script src="cordova.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="firebase-config.js"></script>
