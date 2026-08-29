@@ -74,6 +74,14 @@ const UI = (() => {
     // can't register a service worker — silently skip rather than
     // throwing a console error for that case.
     if (location.protocol === 'file:') return;
+    // Registering a service worker inside the native Capacitor app blocks
+    // Capacitor from injecting its bridge (window.Capacitor never gets
+    // created, so every native plugin -- notifications included -- looks
+    // "missing" even though it's built into the app). The service worker
+    // is only useful for the real website (offline caching for the PWA/
+    // browser case), so it must never run inside the installed app.
+    const isNativeApp = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+    if (isNativeApp) return;
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
