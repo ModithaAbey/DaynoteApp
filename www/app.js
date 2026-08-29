@@ -53,6 +53,18 @@ const UI = (() => {
     if (typeof Reminders !== 'undefined') Reminders.start();
     registerServiceWorker();
     wireInstallPrompt();
+
+    // TEMPORARY DIAGNOSTIC: shows once per page load whether this is
+    // running inside the real native app or just a browser/website
+    // context, to remove any ambiguity while testing. Remove once the
+    // native-notifications issue is confirmed fixed.
+    const isNativeApp = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+    UI.showToast(
+      isNativeApp ? 'Native app detected' : 'NOT native (browser/website)',
+      isNativeApp
+        ? (window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications ? 'LocalNotifications plugin found' : 'LocalNotifications plugin MISSING')
+        : 'window.Capacitor is unavailable here'
+    );
   }
 
   // ---------------- PWA: service worker + install prompt ----------------
