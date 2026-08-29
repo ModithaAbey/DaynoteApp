@@ -1,56 +1,58 @@
 name: Build Android APK
-
 # Runs automatically on every push to main, and can also be triggered
 # manually from the Actions tab ("Run workflow" button).
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-
 # Lets this workflow create/update GitHub Releases (needed for the
 # "Publish APK to a permanent Release" step below).
 permissions:
   contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
-
       - name: Install npm dependencies
         run: npm install
-
       # `cap add android` only creates the android/ folder if it doesn't
-      # already exist — safe to run every time, and covers the case
+      # already exist -- safe to run every time, and covers the case
       # where the folder was never committed to the repo.
       - name: Ensure native Android project exists
         run: |
           if [ ! -d "android" ]; then
             npx cap add android
           fi
-
       - name: Sync web assets into the native project
         run: npx cap sync android
-
+      # Adds the permission Android requires for exact-time alarms
+      # (needed so reminders fire on schedule even while the app is
+      # fully closed). `cap add android` regenerates AndroidManifest.xml
+      # from scratch each time, so this has to be patched in on every
+      # build rather than committed once. The grep check makes this
+      # safe to re-run even if the permission is ever added to a
+      # committed manifest later.
+      - name: Add exact-alarm permission to Android manifest
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "SCHEDULE_EXACT_ALARM" "$MANIFEST"; then
+            sed -i 's#<application#<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />\n    <application#' "$MANIFEST"
+          fi
       - name: Make gradlew executable
         run: chmod +x android/gradlew
-
       - name: Build debug APK
         run: cd android && ./gradlew assembleDebug
-
       # Makes the built APK downloadable from the workflow run's summary
       # page (Actions tab -> this run -> Artifacts section), instead of
       # it only existing on the CI runner's disk (which gets thrown away
@@ -63,7 +65,6 @@ jobs:
         with:
           name: daynote-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
-
       # Publishes the same APK to a GitHub Release tagged "latest",
       # replacing whatever was there before. This gives a permanent,
       # no-login-required download URL that never changes between
