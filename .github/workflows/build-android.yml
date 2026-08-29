@@ -36,18 +36,27 @@ jobs:
           fi
       - name: Sync web assets into the native project
         run: npx cap sync android
-      # Adds the permission Android requires for exact-time alarms
-      # (needed so reminders fire on schedule even while the app is
-      # fully closed). `cap add android` regenerates AndroidManifest.xml
-      # from scratch each time, so this has to be patched in on every
-      # build rather than committed once. The grep check makes this
-      # safe to re-run even if the permission is ever added to a
-      # committed manifest later.
+      # Grants exact-time alarm scheduling automatically at install, with
+      # no settings-screen toggle for the user to find at all. This is
+      # USE_EXACT_ALARM rather than SCHEDULE_EXACT_ALARM specifically:
+      # SCHEDULE_EXACT_ALARM requires the user to manually enable an
+      # "Alarms & reminders" toggle that different phone brands place in
+      # inconsistent, sometimes hard-to-find locations (and Samsung's
+      # One UI hides the toggle entirely until the app has explicitly
+      # requested it via an intent, which this app's code doesn't do).
+      # USE_EXACT_ALARM sidesteps all of that by being auto-granted --
+      # its only restriction is a Play Store listing policy, which
+      # doesn't apply here since this APK is sideloaded, not published
+      # to Play. `cap add android` regenerates AndroidManifest.xml from
+      # scratch each time, so this has to be patched in on every build
+      # rather than committed once. The grep check makes this safe to
+      # re-run even if the permission is ever added to a committed
+      # manifest later.
       - name: Add exact-alarm permission to Android manifest
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
-          if ! grep -q "SCHEDULE_EXACT_ALARM" "$MANIFEST"; then
-            sed -i 's#<application#<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />\n    <application#' "$MANIFEST"
+          if ! grep -q "USE_EXACT_ALARM" "$MANIFEST"; then
+            sed -i 's#<application#<uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <application#' "$MANIFEST"
           fi
       - name: Make gradlew executable
         run: chmod +x android/gradlew
