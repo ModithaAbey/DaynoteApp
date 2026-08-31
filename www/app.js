@@ -53,18 +53,6 @@ const UI = (() => {
     if (typeof Reminders !== 'undefined') Reminders.start();
     registerServiceWorker();
     wireInstallPrompt();
-
-    // TEMPORARY DIAGNOSTIC: shows once per page load whether this is
-    // running inside the real native app or just a browser/website
-    // context, to remove any ambiguity while testing. Remove once the
-    // native-notifications issue is confirmed fixed.
-    const isNativeApp = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
-    UI.showToast(
-      isNativeApp ? 'Native app detected' : 'NOT native (browser/website)',
-      isNativeApp
-        ? (window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications ? 'LocalNotifications plugin found' : 'LocalNotifications plugin MISSING')
-        : 'window.Capacitor is unavailable here'
-    );
   }
 
   // ---------------- PWA: service worker + install prompt ----------------
@@ -74,14 +62,6 @@ const UI = (() => {
     // can't register a service worker — silently skip rather than
     // throwing a console error for that case.
     if (location.protocol === 'file:') return;
-    // Registering a service worker inside the native Capacitor app blocks
-    // Capacitor from injecting its bridge (window.Capacitor never gets
-    // created, so every native plugin -- notifications included -- looks
-    // "missing" even though it's built into the app). The service worker
-    // is only useful for the real website (offline caching for the PWA/
-    // browser case), so it must never run inside the installed app.
-    const isNativeApp = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
-    if (isNativeApp) return;
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
@@ -105,6 +85,22 @@ const UI = (() => {
 
   // Path to the built APK — served from the GitHub Release asset.
   const APK_URL = 'https://github.com/ModithaAbey/DaynoteApp/releases/download/latest/app-debug.apk';
+
+  // Chrome (and other Chromium browsers) treat this site as an installable
+  // PWA on its own — because of manifest.json + a registered service
+  // worker — and will offer ITS OWN "Install app" / "Add to Home screen"
+  // prompt (an address-bar icon and/or an automatic mini-infobar),
+  // completely separate from the custom banner below. If someone taps
+  // THAT browser-native prompt instead of DayNote's own "Install" button,
+  // they get a plain home-screen shortcut to the website — not the real
+  // Capacitor app — which looks like installing worked but can never get
+  // background notifications. Capturing and cancelling the event here
+  // stops Chrome from offering that competing path, so the only "Install"
+  // affordance left on Android is DayNote's own button, which downloads
+  // the actual APK.
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+  });
 
   function wireInstallPrompt() {
     if (isStandalone()) return;
@@ -242,8 +238,10 @@ const UI = (() => {
   }
   function todaySpend(today) {
     try {
-      const list = JSON.parse(localStorage.getItem('daynote.finance.transactions')) || [];
-      return list.filter(t => t.date === today).reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+      const list = DB.finance.transactions.list() || [];
+      return list
+        .filter(t => t.date === today && t.type !== 'income')
+        .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
     } catch (e) { return 0; }
   }
   function buildTodaySummary() {
