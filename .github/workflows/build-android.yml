@@ -26,6 +26,17 @@ jobs:
           java-version: 17
       - name: Install npm dependencies
         run: npm install
+      # capacitor.config.json points webDir at "www", but the actual site
+      # (index.html, styles.css, app.js, etc.) lives at the repo root next
+      # to this workflow -- the same files Netlify serves directly. Copy
+      # them into www/ here so `cap sync` has real content to bundle into
+      # the APK, instead of an empty/missing folder.
+      - name: Stage web assets into www/
+        run: |
+          mkdir -p www/assets
+          cp index.html calendar.html tasks.html finance.html journal.html www/
+          cp styles.css *.js manifest.json www/
+          cp -r assets/. www/assets/
       # `cap add android` only creates the android/ folder if it doesn't
       # already exist -- safe to run every time, and covers the case
       # where the folder was never committed to the repo.
