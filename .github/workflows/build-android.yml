@@ -26,14 +26,44 @@ jobs:
           java-version: 17
       - name: Install npm dependencies
         run: npm install
+      - name: Install Firebase Authentication plugin
+        run: npm install @capacitor-firebase/authentication@latest
       # `cap add android` only creates the android/ folder if it doesn't
       # already exist -- safe to run every time, and covers the case
-      # where the folder was never committed to the repo.
+      # where the folder was never committed to the repo. IMPORTANT: the
+      # android/ folder must NOT exist in the repo at all (not even
+      # partially, e.g. just holding google-services.json) -- if it does,
+      # this check skips regenerating it and every later step that
+      # expects a full native project (AndroidManifest.xml etc.) fails.
       - name: Ensure native Android project exists
         run: |
           if [ ! -d "android" ]; then
             npx cap add android
           fi
+      # Uses a fixed debug keystore (committed at repo root as
+      # daynote-debug.keystore) instead of the default one Gradle would
+      # otherwise auto-generate fresh on every run. Without this, the
+      # APK's signing certificate -- and therefore its SHA-1 fingerprint
+      # -- would be different every build, breaking Google Sign-In (which
+      # is registered against one fixed SHA-1 in the Firebase console)
+      # after every single rebuild.
+      - name: Use our fixed debug keystore (so SHA-1 stays the same every build)
+        run: |
+          mkdir -p ~/.android
+          cp daynote-debug.keystore ~/.android/debug.keystore
+      # Copies the Firebase config (committed at repo root as
+      # google-services.json) into the native project so the Google
+      # Services Gradle plugin below can pick it up at build time.
+      - name: Add Firebase config to the native project
+        run: cp google-services.json android/app/google-services.json
+      # Wires up the Google Services Gradle plugin, which reads
+      # google-services.json and generates the resources the Firebase
+      # Authentication native SDK needs (client IDs etc.) -- required for
+      # native Google Sign-In to work at all.
+      - name: Apply the Google Services Gradle plugin
+        run: |
+          sed -i "/classpath 'com.android.tools.build:gradle/a\\    classpath 'com.google.gms:google-services:4.4.2'" android/build.gradle
+          echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
       - name: Sync web assets into the native project
         run: npx cap sync android
       # Grants exact-time alarm scheduling automatically at install, with
