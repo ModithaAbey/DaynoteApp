@@ -52,24 +52,11 @@ const Reminders = (() => {
   // unlike everything else in this file which needs the app open.
   async function scheduleNative(itemId, title, body, atMs) {
     const plugin = nativePlugin();
-    // TEMPORARY DIAGNOSTIC: each of these was previously a silent no-op.
-    if (!plugin) {
-      if (typeof UI !== 'undefined' && UI.showToast) UI.showToast('Reminder not scheduled', 'LocalNotifications plugin not found');
-      return;
-    }
-    if (!atMs) {
-      if (typeof UI !== 'undefined' && UI.showToast) UI.showToast('Reminder not scheduled', 'No reminder time computed');
-      return;
-    }
-    if (atMs <= Date.now()) {
-      if (typeof UI !== 'undefined' && UI.showToast) UI.showToast('Reminder not scheduled', `Time already passed: ${new Date(atMs)}`);
-      return;
-    }
+    if (!plugin) return;
+    if (!atMs) return;
+    if (atMs <= Date.now()) return;
     const ok = await ensureNativePermission();
-    if (!ok) {
-      if (typeof UI !== 'undefined' && UI.showToast) UI.showToast('Reminder not scheduled', 'Notification permission not granted natively');
-      return;
-    }
+    if (!ok) return;
     try {
       await plugin.schedule({
         notifications: [{
@@ -79,14 +66,7 @@ const Reminders = (() => {
           schedule: { at: new Date(atMs) },
         }],
       });
-    } catch (e) {
-      // TEMPORARY DIAGNOSTIC: surface the real error instead of
-      // silently swallowing it, so we can see why native scheduling
-      // is failing. Revert to the empty catch once this is fixed.
-      if (typeof UI !== 'undefined' && UI.showToast) {
-        UI.showToast('Reminder scheduling failed', String(e && (e.message || e)));
-      }
-    }
+    } catch (e) { /* ignore */ }
   }
 
   async function cancelNative(itemId) {
