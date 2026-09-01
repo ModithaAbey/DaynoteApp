@@ -31,6 +31,10 @@ jobs:
       # require @capacitor/core 7+/8+ and fail to install here otherwise.
       - name: Install Firebase Authentication plugin
         run: npm install @capacitor-firebase/authentication@6
+      # Reads www/assets/icons/icon.png and generates every Android launcher
+      # icon size/density into android/app/src/main/res/mipmap-* below.
+      - name: Install icon generator
+        run: npm install @capacitor/assets --save-dev
       # `cap add android` only creates the android/ folder if it doesn't
       # already exist -- safe to run every time, and covers the case
       # where the folder was never committed to the repo. IMPORTANT: the
@@ -43,6 +47,13 @@ jobs:
           if [ ! -d "android" ]; then
             npx cap add android
           fi
+      # Replaces Capacitor's default template icon (a generic blue
+      # geometric mark, applied fresh by `cap add android` above on every
+      # build) with DayNote's actual "D" icon, generated from the single
+      # source image at www/assets/icons/icon.png into all the launcher icon
+      # sizes/densities Android needs.
+      - name: Generate native app icon from www/assets/icons/icon.png
+        run: npx capacitor-assets generate --android --assetPath www/assets/icons
       # Uses a fixed debug keystore (committed at repo root as
       # daynote-debug.keystore) instead of the default one Gradle would
       # otherwise auto-generate fresh on every run. Without this, the
