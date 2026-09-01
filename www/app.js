@@ -712,6 +712,34 @@ const UI = (() => {
 
     $('#onboard-google-btn', overlay).onclick = async () => {
       if (typeof firebase === 'undefined') { showError('Firebase isn\u2019t configured yet \u2014 see firebase-config.js.'); return; }
+
+      const isNativeApp = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+
+      if (isNativeApp) {
+        // Native Android app: a WebView can't complete Google's OAuth
+        // flow (Google blocks embedded webviews outright), and Capacitor
+        // hands off any external navigation to the system browser instead
+        // \u2014 which then has no way to relay the result back into this
+        // app's own isolated WebView. So instead we go through the native
+        // Google Sign-In SDK (via the Capacitor Firebase plugin), which
+        // returns an ID token straight to this JS code with no browser
+        // involved at all, then hand that token to the Firebase JS SDK.
+        const plugin = window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication;
+        if (!plugin) { showError('Native Google sign-in isn\u2019t set up yet.'); return; }
+        try {
+          const result = await plugin.signInWithGoogle();
+          const idToken = result.credential && result.credential.idToken;
+          if (!idToken) { showError('Google sign-in didn\u2019t return a token.'); return; }
+          const credential = firebase.auth.GoogleAuthProvider.credential(idToken);
+          const userCred = await firebase.auth().signInWithCredential(credential);
+          finishWithFirebaseUser(userCred.user);
+        } catch (e) {
+          showError(e.message || 'Google sign-in failed.');
+        }
+        return;
+      }
+
+      // Browser / PWA: popup with redirect fallback works fine here.
       const provider = new firebase.auth.GoogleAuthProvider();
       try {
         // Try a popup first on every device. Redirect-based sign-in relies
