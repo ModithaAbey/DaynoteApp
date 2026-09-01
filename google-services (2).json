@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "20258130416",
+    "project_id": "daynote-a0860",
+    "storage_bucket": "daynote-a0860.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:20258130416:android:15aa110a2760a64fcb7535",
+        "android_client_info": {
+          "package_name": "com.daynote.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "20258130416-9ilfuht9ktsjgbrtq3ahsv8c625ul5sg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.daynote.app",
+            "certificate_hash": "25518035530578369c9279ab936066950a47a5f9"
+          }
+        },
+        {
+          "client_id": "20258130416-kneblrcdpnnddu6ep9175ldqs62adsrd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA97DOBZO2geAt0t3hB44yaPkuhWes-vu8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "20258130416-kneblrcdpnnddu6ep9175ldqs62adsrd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
