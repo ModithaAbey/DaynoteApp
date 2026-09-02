@@ -66,18 +66,15 @@ jobs:
           mkdir -p ~/.android
           cp daynote-debug.keystore ~/.android/debug.keystore
       # Copies the Firebase config (committed at repo root as
-      # google-services.json) into the native project so the Google
-      # Services Gradle plugin below can pick it up at build time.
+      # google-services.json) into the native project. Capacitor's
+      # generated app/build.gradle already auto-detects this file and
+      # applies the Google Services Gradle plugin itself (see the
+      # try/catch block around "servicesJSON" in that file) -- no manual
+      # plugin-application step is needed, and one was tried here before
+      # but caused a duplicate/conflicting plugin classpath that silently
+      # broke Firebase's resource generation, crashing the app at launch.
       - name: Add Firebase config to the native project
         run: cp google-services.json android/app/google-services.json
-      # Wires up the Google Services Gradle plugin, which reads
-      # google-services.json and generates the resources the Firebase
-      # Authentication native SDK needs (client IDs etc.) -- required for
-      # native Google Sign-In to work at all.
-      - name: Apply the Google Services Gradle plugin
-        run: |
-          sed -i "/classpath 'com.android.tools.build:gradle/a\\    classpath 'com.google.gms:google-services:4.4.2'" android/build.gradle
-          echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
       - name: Sync web assets into the native project
         run: npx cap sync android
       # Grants exact-time alarm scheduling automatically at install, with
