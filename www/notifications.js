@@ -63,10 +63,14 @@ const Reminders = (() => {
           id: toNativeId(itemId),
           title,
           body,
-          schedule: { at: new Date(atMs) },
+          // allowWhileIdle makes the plugin use setExactAndAllowWhileIdle
+          // (RTC_WAKEUP). Without it the plugin uses a non-wakeup alarm
+          // (setExact + RTC), so a sleeping phone only shows the
+          // notification once it is next woken up.
+          schedule: { at: new Date(atMs), allowWhileIdle: true },
         }],
       });
-    } catch (e) { /* ignore */ }
+    } catch (e) { console.error('DayNote: could not schedule native notification', e); }
   }
 
   async function cancelNative(itemId) {
@@ -76,7 +80,7 @@ const Reminders = (() => {
   }
 
   async function ensurePermission() {
-    if (isNative()) return ensureNativePermission() ? 'granted' : 'denied';
+    if (isNative()) return (await ensureNativePermission()) ? 'granted' : 'denied';
     if (typeof Notification === 'undefined') return 'unsupported';
     if (Notification.permission === 'default') {
       permission = await Notification.requestPermission();
